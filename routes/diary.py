@@ -21,5 +21,6 @@ def create_diary_entry(entry: DiaryEntryCreate, db: Session = Depends(get_db)):
     db.refresh(db_entry)
     return db_entry
 
+@router.get("/")
 def get_all_diary_entries(db: Session = Depends(get_db)):
     return db.query(DiaryEntry).all()
