@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Link from 'next/link';
 
 interface DiaryEntry {
   id: number;
@@ -110,6 +111,9 @@ export default function Home() {
             <p className="text-sm text-gray-400 mt-2">
               {new Date(entry.created_at).toLocaleString()}
             </p>
+            <Link href={`/${entry.id}`}>
+              <p className="text-sm text-blue-500 mt-2 cursor-pointer">詳細を見る</p>
+            </Link>
           </div>
         ))}
       </div>
