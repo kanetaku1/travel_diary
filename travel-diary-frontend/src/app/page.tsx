@@ -9,12 +9,14 @@ interface DiaryEntry {
   title: string;
   content: string;
   created_at: string;
+  file_url?:string;
 }
 
 export default function Home() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState('');
 
   // 一覧取得処理
@@ -23,7 +25,6 @@ export default function Home() {
       const response = await axios.get('http://127.0.0.1:8000/diary/');
       setEntries(response.data);
     } catch (error) {
-      console.log(error);
       console.error('API接続エラー:', error);
     }
   };
@@ -35,18 +36,28 @@ export default function Home() {
   // 投稿処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('content', content);
+    formData.append('created_at', new Date().toISOString());
+
+    if (file) {
+      formData.append('file', file);
+    }
+
     try {
-      const response = await axios.post('http://127.0.0.1:8000/diary/', {
-        title,
-        content,
-        created_at: new Date().toISOString(),
+      await axios.post('http://127.0.0.1:8000/diary/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
       setStatus('投稿成功！');
       setTitle('');
       setContent('');
-      console.log(response.data);
+      setFile(null);
 
-      // **投稿成功後に一覧を再取得して更新**
+      // 投稿成功後に一覧を再取得して更新
       fetchEntries();
     } catch (error) {
       console.error('APIエラー:', error);
@@ -57,17 +68,13 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10">
       {/* 投稿フォーム */}
-      <h1 className="text-3xl font-bold text-blue-500 mb-6">
-        Travel Diary
-      </h1>
+      <h1 className="text-3xl font-bold text-blue-500 mb-6">Travel Diary</h1>
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg mb-10"
       >
         <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2">
-            タイトル
-          </label>
+          <label className="block text-gray-700 font-bold mb-2">タイトル</label>
           <input
             type="text"
             value={title}
@@ -77,14 +84,20 @@ export default function Home() {
           />
         </div>
         <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2">
-            内容
-          </label>
+          <label className="block text-gray-700 font-bold mb-2">内容</label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
             required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-gray-700 font-bold mb-2">写真・動画</label>
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
           />
         </div>
         <button
@@ -94,9 +107,7 @@ export default function Home() {
           投稿
         </button>
         {status && (
-          <p className="mt-4 text-center text-green-500">
-            {status}
-          </p>
+          <p className="mt-4 text-center text-green-500">{status}</p>
         )}
       </form>
 
@@ -112,9 +123,16 @@ export default function Home() {
             <p className="text-sm text-gray-400 mt-2">
               {new Date(entry.created_at).toLocaleString()}
             </p>
-            <Link href={`/${entry.id}`}>
-              <p className="text-sm text-blue-500 mt-2 cursor-pointer">詳細を見る</p>
-            </Link>
+            {entry.file_url && (
+              <a
+                href={`http://127.0.0.1:8000/${entry.file_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 mt-2 block"
+              >
+                添付ファイルを見る
+              </a>
+            )}
           </div>
         ))}
       </div>

@@ -24,13 +24,13 @@ async def save_file(file: UploadFile) -> str:
         raise HTTPException(status_code=500, detail=f"ファイル保存に失敗しました: {str(e)}")
     
 # すべてのファイルを一覧表示するAPI (デバッグ用)
-@router.get("/files")
+@router.get("/")
 def list_files():
     files = os.listdir(UPLOAD_DIR)
     return {"files": files}
 
 # ファイルをダウンロードするAPI
-@router.get("/files/{filename}")
+@router.get("/{filename}")
 def get_file(filename: str):
     file_path = os.path.join(UPLOAD_DIR, filename)
     if os.path.exists(file_path):

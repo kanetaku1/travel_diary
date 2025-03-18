@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(photos.router, prefix="/photos", tags=["photos"])
+app.include_router(photos.router, prefix="/uploads", tags=["uploads"])
 app.include_router(diary.router, prefix="/diary", tags=["diary"])
 
 @app.get("/")

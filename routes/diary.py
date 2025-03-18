@@ -32,11 +32,13 @@ async def create_diary_entry(
     if file:
         file_path = await save_file(file)  # routes/photos.py の関数を呼び出す
         if file_path:
-            # Photoモデルに保存
+            # DiaryEntry の file_url に保存
+            db_entry.file_url = file_path
+            # Photo モデルにも保存
             photo = Photo(diary_id=db_entry.id, file_path=file_path)
             db.add(photo)
             db.commit()
-
+            db.refresh(db_entry)
     return db_entry
 
 @router.get("/")

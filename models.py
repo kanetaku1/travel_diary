@@ -11,6 +11,7 @@ class DiaryEntry(Base):
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     photos = relationship("Photo", back_populates="diary")
+    file_url = Column(String, nullable=True)
 
 class Photo(Base):
     __tablename__ = "photos"
