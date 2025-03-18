@@ -4,6 +4,9 @@ from database import SessionLocal
 from models import DiaryEntry, Photo
 from routes.photos import save_file
 from typing import List
+import os
+
+UPLOAD_DIR = "uploads"
 
 router = APIRouter()
 
@@ -38,6 +41,7 @@ async def create_diary_entry(
             photo = Photo(diary_id=db_entry.id, file_path=file_path)
             db.add(photo)
             db.commit()
+            db.refresh(photo)
             db.refresh(db_entry)
     return db_entry
 
@@ -72,25 +76,46 @@ async def update_diary_entry(
     id: int,
     title: str = Form(...),
     content: str = Form(...),
-    files: List[UploadFile] = None,
+    created_at: str = Form(...),
+    file: UploadFile = None,
+    delete_file: bool = Form(False),
     db: Session = Depends(get_db)
 ):
-    diary = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
-    if diary is None:
+    entry = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
+    if entry is None:
         raise HTTPException(status_code=404, detail="Diary entry not found")
 
-    diary.title = title
-    diary.content = content
+    # ファイル削除フラグが立っている場合、関連する写真も削除
+    if delete_file and entry.file_url:
+        existing_file_path = os.path.join(UPLOAD_DIR, os.path.basename(entry.file_url))
+        if os.path.exists(existing_file_path):
+            os.remove(existing_file_path)
+        entry.file_url = None
 
-    # 新しいファイルをアップロードした場合、保存
-    if files:
-        for file in files:
-            file_path = f"uploads/{file.filename}"
-            with open(file_path, "wb") as buffer:
-                buffer.write(await file.read())
-            new_photo = Photo(diary_id=id, file_path=file_path)
-            db.add(new_photo)
+        # Photoモデルからも削除
+        db.query(Photo).filter(Photo.diary_id == id).delete()
+
+    # ファイルがある場合は保存
+    if file:
+        if entry.file_url:  # 既存のファイルを削除
+            existing_file_path = os.path.join(UPLOAD_DIR, os.path.basename(entry.file_url))
+            if os.path.exists(existing_file_path):
+                os.remove(existing_file_path)
+        file_path = await save_file(file)
+        entry.file_url = file_path
+
+        existing_photo = db.query(Photo).filter(Photo.diary_id == id).first()
+        if existing_photo:
+            existing_photo.file_path = file_path
+        else:
+            photo = Photo(diary_id=id, file_path=file_path)
+            db.add(photo)
+    
+    entry.title = title
+    entry.content = content
+    entry.created_at = created_at
 
     db.commit()
-    db.refresh(diary)
-    return diary
+    db.refresh(entry)
+    db.refresh(entry)
+    return entry
