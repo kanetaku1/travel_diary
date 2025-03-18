@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import DiaryEntry, Photo
-from schemas import DiaryEntryCreate, DiaryEntryUpdate
 from routes.photos import save_file
+from typing import List
 
 router = APIRouter()
 
@@ -46,39 +46,51 @@ def get_all_diary_entries(db: Session = Depends(get_db)):
     return db.query(DiaryEntry).all()
 
 # 詳細取得エンドポイント
-@router.get("/{diary_id}")
-def get_diary_entry(diary_id: int, db: Session = Depends(get_db)):
-    entry = db.query(DiaryEntry).filter(DiaryEntry.id == diary_id).first()
+@router.get("/{id}")
+def get_diary_entry(id: int, db: Session = Depends(get_db)):
+    entry = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
     if entry is None:
         raise HTTPException(status_code=404, detail="Diary entry not found")
+    
+    base_url = "http://127.0.0.1:8000/"
+    file_url = f"{base_url}{entry.file_url}" if entry.file_url else None
 
     # 関連付けられた写真・動画も取得
-    photos = db.query(Photo).filter(Photo.diary_id == diary_id).all()
-    return {"entry": entry, "photos": photos}
+    photos = db.query(Photo).filter(Photo.diary_id == id).all()
+    return {"entry": {
+        "id": entry.id,
+        "title": entry.title,
+        "content": entry.content,
+        "created_at": entry.created_at,
+        "file_url": file_url,
+        },
+        "photos": photos
+    }
 
-@router.put("/{diary_id}")
+@router.put("/{id}")
 async def update_diary_entry(
-    diary_id: int,
+    id: int,
     title: str = Form(...),
     content: str = Form(...),
-    file: UploadFile = None,
+    files: List[UploadFile] = None,
     db: Session = Depends(get_db)
 ):
-    entry = db.query(DiaryEntry).filter(DiaryEntry.id == diary_id).first()
-    if entry is None:
+    diary = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
+    if diary is None:
         raise HTTPException(status_code=404, detail="Diary entry not found")
 
-    entry.title = title
-    entry.content = content
+    diary.title = title
+    diary.content = content
 
     # 新しいファイルをアップロードした場合、保存
-    if file:
-        file_path = await save_file(file)
-        if file_path:
-            # 既存のファイル削除 (必要なら)
-            db.query(Photo).filter(Photo.diary_id == diary_id).delete()
-            photo = Photo(diary_id=entry.id, file_path=file_path)
-            db.add(photo)
+    if files:
+        for file in files:
+            file_path = f"uploads/{file.filename}"
+            with open(file_path, "wb") as buffer:
+                buffer.write(await file.read())
+            new_photo = Photo(diary_id=id, file_path=file_path)
+            db.add(new_photo)
 
     db.commit()
-    return entry
+    db.refresh(diary)
+    return diary

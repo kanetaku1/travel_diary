@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from routes import photos, diary
 
 app = FastAPI()
@@ -13,6 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.include_router(photos.router, prefix="/uploads", tags=["uploads"])
 app.include_router(diary.router, prefix="/diary", tags=["diary"])
 

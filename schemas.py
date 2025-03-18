@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 import datetime
-from typing import Optional
+from typing import Optional, List
 
 class DiaryEntryCreate(BaseModel):
     title: str
@@ -14,6 +14,24 @@ class DiaryEntryUpdate(BaseModel):
     content: str
     created_at: datetime.datetime
     file_url: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+# Photo のスキーマ
+class PhotoResponse(BaseModel):
+    id: int
+    file_path: str
+
+    class Config:
+        orm_mode = True
+
+class DiaryEntryResponse(BaseModel):
+    id: int
+    title: str
+    content: Optional[str]
+    file_url: Optional[str]
+    photos: List[PhotoResponse] = []
 
     class Config:
         orm_mode = True

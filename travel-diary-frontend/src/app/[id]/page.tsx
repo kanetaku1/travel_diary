@@ -9,6 +9,7 @@ interface DiaryEntry {
   title: string;
   content: string;
   created_at: string;
+  file_url?: string;
 }
 
 export default function DiaryDetail() {
@@ -17,15 +18,17 @@ export default function DiaryDetail() {
   const [entry, setEntry] = useState<DiaryEntry | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [file_url, setFileUrl] = useState('');
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     const fetchEntry = async () => {
       try {
         const response = await axios.get(`http://127.0.0.1:8000/diary/${id}`);
-        setEntry(response.data);
-        setTitle(response.data.title);
-        setContent(response.data.content);
+        setEntry(response.data.entry);
+        setTitle(response.data.entry.title);
+        setContent(response.data.entry.content);
+        setFileUrl(response.data.entry.file_url || '');
       } catch (error) {
         console.error('データ取得失敗:', error);
       }
@@ -70,6 +73,23 @@ export default function DiaryDetail() {
           onChange={(e) => setContent(e.target.value)}
           className="w-full px-3 py-2 mt-4 border border-gray-300 rounded-lg"
         />
+        {file_url && (
+          <div className="mt-4">
+            {file_url.match(/\.(jpeg|jpg|gif|png)$/) ? (
+              <img
+                src={file_url}
+                alt="Preview"
+                className="w-full h-auto rounded"
+              />
+            ) : (
+              <video
+                src={file_url}
+                controls
+                className="w-full h-auto rounded"
+              />
+            )}
+          </div>
+        )}
         <button
           onClick={handleUpdate}
           className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 mt-4"

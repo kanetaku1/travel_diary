@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi.responses import FileResponse
 import os
 import uuid
 
@@ -34,6 +35,10 @@ def list_files():
 def get_file(filename: str):
     file_path = os.path.join(UPLOAD_DIR, filename)
     if os.path.exists(file_path):
-        return {"file_path": file_path}
+        response = FileResponse(
+            path=file_path,
+            filename=f"download_{filename}"
+            )
+        return response
     else:
         raise HTTPException(status_code=404, detail="ファイルが見つかりません")

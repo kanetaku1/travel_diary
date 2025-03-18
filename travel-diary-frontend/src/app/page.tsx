@@ -123,7 +123,10 @@ export default function Home() {
             <p className="text-sm text-gray-400 mt-2">
               {new Date(entry.created_at).toLocaleString()}
             </p>
-            {entry.file_url && (
+            <Link href={`/${entry.id}`}>
+              <p className="text-sm text-blue-500 mt-2 cursor-pointer">詳細を見る</p>
+            </Link>
+            {/* {entry.file_url && (
               <a
                 href={`http://127.0.0.1:8000/${entry.file_url}`}
                 target="_blank"
@@ -132,7 +135,7 @@ export default function Home() {
               >
                 添付ファイルを見る
               </a>
-            )}
+            )} */}
           </div>
         ))}
       </div>
