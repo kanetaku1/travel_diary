@@ -23,6 +23,7 @@ export default function Home() {
       const response = await axios.get('http://127.0.0.1:8000/diary/');
       setEntries(response.data);
     } catch (error) {
+      console.log(error);
       console.error('API接続エラー:', error);
     }
   };
