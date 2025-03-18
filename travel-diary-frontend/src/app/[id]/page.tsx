@@ -60,9 +60,7 @@ export default function DiaryDetail() {
     formData.append('title', title);
     formData.append('content', content);
     formData.append('created_at', new Date().toISOString());
-    tags.forEach((tag, index) => {
-      formData.append(`tags[${index}]`, tag);
-    });
+    tags.forEach((tag) => formData.append('tags', tag));
     formData.append('delete_file', String(!file && !fileUrl));
 
     if (file) {

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form 
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, Query
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import DiaryEntry, Photo, Tag
@@ -22,6 +22,7 @@ async def create_diary_entry(
     title: str = Form(...),
     content: str = Form(...),
     created_at: str = Form(...),
+    tags: List[str] = Form([]),
     file: UploadFile = None,
     db: Session = Depends(get_db)
 ):
@@ -31,6 +32,15 @@ async def create_diary_entry(
     db.commit()
     db.refresh(db_entry)
 
+    # タグを登録
+    for tag_name in tags:
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        if not tag:
+            tag = Tag(name=tag_name)
+            db.add(tag)
+        db_entry.tags.append(tag)
+    db.commit()
+    db.refresh(db_entry)
     # ファイルがある場合は保存
     if file:
         file_path = await save_file(file)  # routes/photos.py の関数を呼び出す
@@ -47,7 +57,17 @@ async def create_diary_entry(
 
 @router.get("/")
 def get_all_diary_entries(db: Session = Depends(get_db)):
-    return db.query(DiaryEntry).all()
+    entries = db.query(DiaryEntry).all()
+    return [{
+        "id": entry.id,
+        "title": entry.title,
+        "content": entry.content,
+        "created_at": entry.created_at,
+        "tags": [tag.name for tag in entry.tags],
+        "file_url": entry.file_url
+    } for entry in entries
+]
+
 
 # 詳細取得エンドポイント
 @router.get("/{id}")
@@ -112,6 +132,8 @@ async def update_diary_entry(
         else:
             photo = Photo(diary_id=id, file_path=file_path)
             db.add(photo)
+            db.commit()
+            db.refresh(photo)
 
     # 既存のタグを解除
     entry.tags = []
@@ -129,7 +151,6 @@ async def update_diary_entry(
     entry.created_at = created_at
 
     db.commit()
-    db.refresh(photo)
     db.refresh(entry)
     return entry
 
@@ -137,3 +158,24 @@ async def update_diary_entry(
 def get_tags(db: Session = Depends(get_db)):
     tags = db.query(Tag).all()
     return [tag.name for tag in tags]
+
+@router.get("/search/")
+def search_diary_by_tags(
+    tags: List[str] = Query(...),
+    db: Session = Depends(get_db)
+):
+    matched_entries = (
+        db.query(DiaryEntry)
+        .join(DiaryEntry.tags)
+        .filter(Tag.name.in_(tags))
+        .all()
+    )
+
+    return [{
+        "id": entry.id,
+        "title": entry.title,
+        "content": entry.content,
+        "created_at": entry.created_at,
+        "tags": [tag.name for tag in entry.tags],
+        "file_url": entry.file_url
+    } for entry in matched_entries]
