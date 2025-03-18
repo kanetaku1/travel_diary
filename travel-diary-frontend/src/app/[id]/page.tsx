@@ -10,6 +10,7 @@ interface DiaryEntry {
   content: string;
   created_at: string;
   file_url?: string;
+  tags: string[];
 }
 
 export default function DiaryDetail() {
@@ -20,6 +21,7 @@ export default function DiaryDetail() {
   const [content, setContent] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function DiaryDetail() {
         setTitle(response.data.entry.title);
         setContent(response.data.entry.content);
         setFileUrl(response.data.entry.file_url || '');
+        setTags(response.data.tags || []);
       } catch (error) {
         console.error('データ取得失敗:', error);
       }
@@ -38,12 +41,28 @@ export default function DiaryDetail() {
     if (id) fetchEntry();
   }, [id]);
 
+  // タグ追加
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && e.currentTarget.value) {
+      setTags([...tags, e.currentTarget.value]);
+      e.currentTarget.value = '';
+    }
+  };
+
+  // タグ削除
+  const handleDeleteTag = (tag: string) => {
+    setTags(tags.filter((t) => t !== tag));
+  };
+
   // 編集処理
   const handleUpdate = async () => {
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
     formData.append('created_at', new Date().toISOString());
+    tags.forEach((tag, index) => {
+      formData.append(`tags[${index}]`, tag);
+    });
     formData.append('delete_file', String(!file && !fileUrl));
 
     if (file) {
@@ -73,6 +92,9 @@ export default function DiaryDetail() {
       formData.append('title', title);
       formData.append('content', content);
       formData.append('created_at', new Date().toISOString());
+      tags.forEach((tag, index) => {
+        formData.append(`tags[${index}]`, tag);
+      });
       formData.append('delete_file', 'true');
 
       const response = await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData);
@@ -91,15 +113,33 @@ export default function DiaryDetail() {
         {entry.title}
       </h1>
       <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
+        {/* タグ表示 */}
+        <div className="flex flex-wrap mb-4">
+          {tags.map((tag) => (
+            <span 
+              key={tag} 
+              onClick={() => handleDeleteTag(tag)}
+              className="bg-gray-200 text-gray-600 px-2 py-1 rounded-full mr-2 cursor-pointer">
+              {tag} ❌
+            </span>
+          ))}
+          <input
+            placeholder="タグを追加"
+            onKeyDown={handleAddTag}
+            className="w-24 px-2 py-1 border border-gray-300 rounded-lg"
+          />
+        </div>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          placeholder="タイトル"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg"
         />
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          placeholder="内容"
           className="w-full px-3 py-2 mt-4 border border-gray-300 rounded-lg"
         />
         {fileUrl && (

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form 
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import DiaryEntry, Photo
+from models import DiaryEntry, Photo, Tag
 from routes.photos import save_file
 from typing import List
 import os
@@ -66,6 +66,7 @@ def get_diary_entry(id: int, db: Session = Depends(get_db)):
         "title": entry.title,
         "content": entry.content,
         "created_at": entry.created_at,
+        "tags": [tag.name for tag in entry.tags],
         "file_url": file_url,
         },
         "photos": photos
@@ -77,6 +78,7 @@ async def update_diary_entry(
     title: str = Form(...),
     content: str = Form(...),
     created_at: str = Form(...),
+    tags: List[str] = Form([]),
     file: UploadFile = None,
     delete_file: bool = Form(False),
     db: Session = Depends(get_db)
@@ -110,12 +112,28 @@ async def update_diary_entry(
         else:
             photo = Photo(diary_id=id, file_path=file_path)
             db.add(photo)
+
+    # 既存のタグを解除
+    entry.tags = []
+    db.commit()
+    # 新しいタグを設定
+    for tag_name in tags:
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        if not tag:
+            tag = Tag(name=tag_name)
+            db.add(tag)
+        entry.tags.append(tag)
     
     entry.title = title
     entry.content = content
     entry.created_at = created_at
 
     db.commit()
-    db.refresh(entry)
+    db.refresh(photo)
     db.refresh(entry)
     return entry
+
+@router.get("/tags/")
+def get_tags(db: Session = Depends(get_db)):
+    tags = db.query(Tag).all()
+    return [tag.name for tag in tags]
