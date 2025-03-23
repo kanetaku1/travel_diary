@@ -67,6 +67,13 @@ export default function DiaryDetail() {
     );
   };
 
+    // ファイル追加処理
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        setFiles(Array.from(e.target.files)||[]);
+      }
+    };  
+
   // 編集処理
   const handleUpdate = async () => {
     const formData = new FormData();
@@ -143,7 +150,11 @@ export default function DiaryDetail() {
             </button>
           </div>
         ))}
-        <input type="file" onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+        <input 
+          type="file" 
+          multiple onChange={handleFileChange} 
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
+        />
         <button
           onClick={handleUpdate}
           className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 mt-4"

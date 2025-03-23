@@ -4,11 +4,17 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 
+interface Photo {
+  id: number;
+  file_url: string;
+}
+
 interface DiaryEntry {
   id: number;
   title: string;
   content: string;
   created_at: string;
+  photos: Photo[];
   tags: string[];
 }
 
@@ -16,9 +22,9 @@ export default function Home() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
   const [searchTags, setSearchTags] = useState<string[]>([]);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState('');
   
   useEffect(() => {
@@ -42,7 +48,6 @@ export default function Home() {
         fetchEntries(); // タグが空の場合、全件取得
         return;
       }
-
       const queryString = searchTags.map(tag => `tags=${encodeURIComponent(tag)}`).join('&');
       const response = await axios.get(`http://127.0.0.1:8000/diary/search/?${queryString}`);
       setEntries(response.data);
@@ -77,6 +82,13 @@ export default function Home() {
     setTags(tags.filter((t) => t !== tag));
   };
 
+  // ファイル追加処理
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files)||[]);
+    }
+  };  
+
   // 投稿処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,10 +98,7 @@ export default function Home() {
     formData.append('content', content);
     formData.append('created_at', new Date().toISOString());
     tags.forEach((tag) => formData.append('tags', tag));
-
-    if (file) {
-      formData.append('file', file);
-    }
+    files.forEach((file) => formData.append('files', file));
 
     try {
       await axios.post('http://127.0.0.1:8000/diary/', formData, {
@@ -101,8 +110,7 @@ export default function Home() {
       setTitle('');
       setContent('');
       setTags([]);
-      setFile(null);
-
+      setFiles([]);
       // 投稿成功後に一覧を再取得して更新
       fetchEntries();
     } catch (error) {
@@ -157,7 +165,7 @@ export default function Home() {
           <label className="block text-gray-700 font-bold mb-2">写真・動画</label>
           <input
             type="file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            multiple onChange={handleFileChange} 
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
           />
         </div>

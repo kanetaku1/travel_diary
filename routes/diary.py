@@ -23,7 +23,7 @@ async def create_diary_entry(
     content: str = Form(...),
     created_at: str = Form(...),
     tags: List[str] = Form([]),
-    files: List[UploadFile] = None,
+    files: List[UploadFile] = Form([]),
     db: Session = Depends(get_db)
 ):
     # 日記エントリを作成
@@ -44,7 +44,6 @@ async def create_diary_entry(
     if files:
         for file in files:
             file_path = await save_file(file)
-            # Photo モデルにも保存
             new_photo = Photo(diary_entry_id=entry.id, file_url=file_path)
             db.add(new_photo)
     db.commit()
