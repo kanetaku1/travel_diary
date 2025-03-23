@@ -19,7 +19,6 @@ async def save_file(file: UploadFile) -> str:
         # 非同期でファイル保存
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
-
         return file_path
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ファイル保存に失敗しました: {str(e)}")

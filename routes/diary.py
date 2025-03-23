@@ -23,14 +23,14 @@ async def create_diary_entry(
     content: str = Form(...),
     created_at: str = Form(...),
     tags: List[str] = Form([]),
-    file: UploadFile = None,
+    files: List[UploadFile] = None,
     db: Session = Depends(get_db)
 ):
     # 日記エントリを作成
-    db_entry = DiaryEntry(title=title, content=content, created_at=created_at)
-    db.add(db_entry)
+    entry = DiaryEntry(title=title, content=content, created_at=created_at)
+    db.add(entry)
     db.commit()
-    db.refresh(db_entry)
+    db.refresh(entry)
 
     # タグを登録
     for tag_name in tags:
@@ -38,22 +38,18 @@ async def create_diary_entry(
         if not tag:
             tag = Tag(name=tag_name)
             db.add(tag)
-        db_entry.tags.append(tag)
-    db.commit()
-    db.refresh(db_entry)
+        entry.tags.append(tag)
+
     # ファイルがある場合は保存
-    if file:
-        file_path = await save_file(file)  # routes/photos.py の関数を呼び出す
-        if file_path:
-            # DiaryEntry の file_url に保存
-            db_entry.file_url = file_path
+    if files:
+        for file in files:
+            file_path = await save_file(file)
             # Photo モデルにも保存
-            photo = Photo(diary_id=db_entry.id, file_path=file_path)
-            db.add(photo)
-            db.commit()
-            db.refresh(photo)
-            db.refresh(db_entry)
-    return db_entry
+            new_photo = Photo(diary_entry_id=entry.id, file_url=file_path)
+            db.add(new_photo)
+    db.commit()
+    db.refresh(entry)
+    return entry
 
 @router.get("/")
 def get_all_diary_entries(db: Session = Depends(get_db)):
@@ -63,11 +59,10 @@ def get_all_diary_entries(db: Session = Depends(get_db)):
         "title": entry.title,
         "content": entry.content,
         "created_at": entry.created_at,
+        "photos": [{"id": photo.id, "file_url": photo.file_url} for photo in entry.photos],
         "tags": [tag.name for tag in entry.tags],
-        "file_url": entry.file_url
     } for entry in entries
 ]
-
 
 # 詳細取得エンドポイント
 @router.get("/{id}")
@@ -75,21 +70,14 @@ def get_diary_entry(id: int, db: Session = Depends(get_db)):
     entry = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
     if entry is None:
         raise HTTPException(status_code=404, detail="Diary entry not found")
-    
-    base_url = "http://127.0.0.1:8000/"
-    file_url = f"{base_url}{entry.file_url}" if entry.file_url else None
 
-    # 関連付けられた写真・動画も取得
-    photos = db.query(Photo).filter(Photo.diary_id == id).all()
-    return {"entry": {
+    return {
         "id": entry.id,
         "title": entry.title,
         "content": entry.content,
         "created_at": entry.created_at,
-        "tags": [tag.name for tag in entry.tags],
-        "file_url": file_url,
-        },
-        "photos": photos
+        "photos": [{"id": photo.id, "file_url": photo.file_url} for photo in entry.photos],
+        "tags": [tag.name for tag in entry.tags]
     }
 
 @router.put("/{id}")
@@ -99,45 +87,31 @@ async def update_diary_entry(
     content: str = Form(...),
     created_at: str = Form(...),
     tags: List[str] = Form([]),
-    file: UploadFile = None,
-    delete_file: bool = Form(False),
+    files: List[UploadFile] = Form([]),
+    delete_files: List[int] = Form([]),
     db: Session = Depends(get_db)
 ):
     entry = db.query(DiaryEntry).filter(DiaryEntry.id == id).first()
-    if entry is None:
+    if not entry:
         raise HTTPException(status_code=404, detail="Diary entry not found")
 
     # ファイル削除フラグが立っている場合、関連する写真も削除
-    if delete_file and entry.file_url:
-        existing_file_path = os.path.join(UPLOAD_DIR, os.path.basename(entry.file_url))
-        if os.path.exists(existing_file_path):
-            os.remove(existing_file_path)
-        entry.file_url = None
+    for file_id in delete_files:
+        file = db.query(Photo).filter(Photo.id == file_id).first()
+        if os.path.exists(file.file_url):
+            os.remove(file.file_url)
+        db.delete(file)
 
-        # Photoモデルからも削除
-        db.query(Photo).filter(Photo.diary_id == id).delete()
+    # ファイルのアップロード
+    if files:
+        for file in files:
+            file_path = await save_file(file)
+            new_photo = Photo(diary_entry_id=id, file_url=file_path)
+            db.add(new_photo)
 
-    # ファイルがある場合は保存
-    if file:
-        if entry.file_url:  # 既存のファイルを削除
-            existing_file_path = os.path.join(UPLOAD_DIR, os.path.basename(entry.file_url))
-            if os.path.exists(existing_file_path):
-                os.remove(existing_file_path)
-        file_path = await save_file(file)
-        entry.file_url = file_path
-
-        existing_photo = db.query(Photo).filter(Photo.diary_id == id).first()
-        if existing_photo:
-            existing_photo.file_path = file_path
-        else:
-            photo = Photo(diary_id=id, file_path=file_path)
-            db.add(photo)
-            db.commit()
-            db.refresh(photo)
-
-    # 既存のタグを解除
     entry.tags = []
     db.commit()
+
     # 新しいタグを設定
     for tag_name in tags:
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
@@ -171,11 +145,12 @@ def search_diary_by_tags(
         .all()
     )
 
-    return [{
-        "id": entry.id,
-        "title": entry.title,
-        "content": entry.content,
-        "created_at": entry.created_at,
-        "tags": [tag.name for tag in entry.tags],
-        "file_url": entry.file_url
-    } for entry in matched_entries]
+    return [
+        {
+            "id": entry.id,
+            "title": entry.title,
+            "content": entry.content,
+            "created_at": entry.created_at,
+            "tags": [tag.name for tag in entry.tags],
+        } for entry in matched_entries
+    ]

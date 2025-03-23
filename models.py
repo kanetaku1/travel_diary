@@ -18,18 +18,17 @@ class DiaryEntry(Base):
     title = Column(String, index=True)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-    photos = relationship("Photo", back_populates="diary")
-    file_url = Column(String, nullable=True)
+    photos = relationship("Photo", back_populates="diary_entry", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary=diary_entry_tags, back_populates="entries")
 
 class Photo(Base):
     __tablename__ = "photos"
 
     id = Column(Integer, primary_key=True, index=True)
-    diary_id = Column(Integer, ForeignKey("diary_entries.id"))
-    file_path = Column(String)
+    diary_entry_id = Column(Integer, ForeignKey("diary_entries.id"))
+    file_url = Column(String, nullable=False)
 
-    diary = relationship("DiaryEntry", back_populates="photos")
+    diary_entry = relationship("DiaryEntry", back_populates="photos")
 
 class Tag(Base):
     __tablename__ = "tags"

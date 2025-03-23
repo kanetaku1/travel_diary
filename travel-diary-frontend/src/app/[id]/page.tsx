@@ -4,12 +4,17 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 
+interface Photo {
+  id: number;
+  file_url: string;
+}
+
 interface DiaryEntry {
   id: number;
   title: string;
   content: string;
   created_at: string;
-  file_url?: string;
+  photos: Photo[];
   tags: string[];
 }
 
@@ -19,25 +24,24 @@ export default function DiaryDetail() {
   const [entry, setEntry] = useState<DiaryEntry | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [fileUrl, setFileUrl] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [deleteFileIds, setDeleteFileIds] = useState<number[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState('');
+  const base_url = "http://127.0.0.1:8000/";
 
   useEffect(() => {
     const fetchEntry = async () => {
       try {
         const response = await axios.get(`http://127.0.0.1:8000/diary/${id}`);
-        setEntry(response.data.entry);
-        setTitle(response.data.entry.title);
-        setContent(response.data.entry.content);
-        setFileUrl(response.data.entry.file_url || '');
+        setEntry(response.data);
+        setTitle(response.data.title);
+        setContent(response.data.content);
         setTags(response.data.tags || []);
       } catch (error) {
         console.error('データ取得失敗:', error);
       }
     };
-
     if (id) fetchEntry();
   }, [id]);
 
@@ -61,21 +65,16 @@ export default function DiaryDetail() {
     formData.append('content', content);
     formData.append('created_at', new Date().toISOString());
     tags.forEach((tag) => formData.append('tags', tag));
-    formData.append('delete_file', String(!file && !fileUrl));
+    files.forEach((file) => formData.append('files', file));
+    deleteFileIds.forEach((id) => formData.append('delete_file_ids', String(id)));
 
-    if (file) {
-      formData.append('file', file);
-    }
     try {
-      const response = await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
+      await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
       });
       setStatus('更新成功！');
-      setEntry(response.data);
-      setFileUrl(response.data.file_url || '');
-      setFile(null);
       router.push('/'); // 更新後に一覧へ戻る
     } catch (error) {
       console.error('更新失敗:', error);
@@ -83,24 +82,10 @@ export default function DiaryDetail() {
     }
   };
 
-  // **削除処理**
-  const handleFileDelete = async () => {
-    try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('content', content);
-      formData.append('created_at', new Date().toISOString());
-      tags.forEach((tag, index) => {
-        formData.append(`tags[${index}]`, tag);
-      });
-      formData.append('delete_file', 'true');
-
-      const response = await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData);
-      setFileUrl(''); // ファイル削除後に表示をクリア
-      setStatus('ファイルを削除しました');
-    } catch (error) {
-      console.error('削除失敗:', error);
-    }
+  // 削除処理
+  const handleDeleteFile = (fileId: number) => {
+    console.log(fileId);
+    setDeleteFileIds([...deleteFileIds, fileId]);
   };
 
   if (!entry) return <div>読み込み中...</div>;
@@ -108,7 +93,7 @@ export default function DiaryDetail() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10">
       <h1 className="text-3xl font-bold text-blue-500 mb-6">
-        {entry.title}
+        {title}
       </h1>
       <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
         {/* タグ表示 */}
@@ -140,22 +125,21 @@ export default function DiaryDetail() {
           placeholder="内容"
           className="w-full px-3 py-2 mt-4 border border-gray-300 rounded-lg"
         />
-        {fileUrl && (
-          <div className="mt-4">
+        {entry?.photos.map((photo) => (
+          <div key={photo.id} className="mt-4">
             <img
-              src={fileUrl}
-              alt="Preview"
+              src={`${base_url}${photo.file_url}`}
+              alt="Uploaded"
               className="w-full h-auto rounded"
             />
             <button
-              onClick={handleFileDelete}
+              onClick={() => handleDeleteFile(photo.id)}
               className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 mt-2"
-            >
-              ファイルを削除
+            >削除
             </button>
           </div>
-        )}
-        <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        ))}
+        <input type="file" onChange={(e) => setFiles(Array.from(e.target.files || []))} />
         <button
           onClick={handleUpdate}
           className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 mt-4"

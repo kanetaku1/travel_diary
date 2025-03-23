@@ -21,7 +21,7 @@ class DiaryEntryUpdate(BaseModel):
 # Photo のスキーマ
 class PhotoResponse(BaseModel):
     id: int
-    file_path: str
+    file_url: str
 
     class Config:
         orm_mode = True

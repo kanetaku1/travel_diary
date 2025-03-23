@@ -9,7 +9,6 @@ interface DiaryEntry {
   title: string;
   content: string;
   created_at: string;
-  file_url?:string;
   tags: string[];
 }
 
@@ -218,16 +217,6 @@ export default function Home() {
             <Link href={`/${entry.id}`}>
               <p className="text-sm text-blue-500 mt-2 cursor-pointer">詳細を見る</p>
             </Link>
-            {/* {entry.file_url && (
-              <a
-                href={`http://127.0.0.1:8000/${entry.file_url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 mt-2 block"
-              >
-                添付ファイルを見る
-              </a>
-            )} */}
           </div>
         ))}
       </div>
