@@ -57,6 +57,15 @@ export default function DiaryDetail() {
   const handleDeleteTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag));
   };
+  
+  // ファイル削除処理
+  const toggleDeleteFileFlag = (fileId: number) => {
+    console.log(fileId);
+    setDeleteFileIds(deleteFileIds.includes(fileId)
+      ? deleteFileIds.filter((id) => id !== fileId)
+      : [...deleteFileIds, fileId]
+    );
+  };
 
   // 編集処理
   const handleUpdate = async () => {
@@ -66,7 +75,7 @@ export default function DiaryDetail() {
     formData.append('created_at', new Date().toISOString());
     tags.forEach((tag) => formData.append('tags', tag));
     files.forEach((file) => formData.append('files', file));
-    deleteFileIds.forEach((id) => formData.append('delete_file_ids', String(id)));
+    deleteFileIds.forEach((id) => formData.append('delete_files', String(id)));
 
     try {
       await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData, {
@@ -80,12 +89,6 @@ export default function DiaryDetail() {
       console.error('更新失敗:', error);
       setStatus('更新失敗...');
     }
-  };
-
-  // 削除処理
-  const handleDeleteFile = (fileId: number) => {
-    console.log(fileId);
-    setDeleteFileIds([...deleteFileIds, fileId]);
   };
 
   if (!entry) return <div>読み込み中...</div>;
@@ -133,9 +136,10 @@ export default function DiaryDetail() {
               className="w-full h-auto rounded"
             />
             <button
-              onClick={() => handleDeleteFile(photo.id)}
+              onClick={() => toggleDeleteFileFlag(photo.id)}
               className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 mt-2"
-            >削除
+            >
+              {deleteFileIds.includes(photo.id) ? '削除取り消し' : '削除'}
             </button>
           </div>
         ))}
