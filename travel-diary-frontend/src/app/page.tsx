@@ -83,9 +83,19 @@ export default function Home() {
   };
 
   // ファイル追加処理
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
       setFiles(Array.from(e.target.files)||[]);
+      try {
+        const response = await axios.post("http://127.0.0.1:8000/ai/generate_tags", formData);
+        setTags(response.data.tags);
+        console.log("タグ生成成功:", response.data.tags);
+      } catch (error) {
+        console.error("タグ生成エラー:", error);
+      }
     }
   };  
 
