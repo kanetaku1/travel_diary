@@ -1,13 +1,16 @@
 import os
 from fastapi import APIRouter, UploadFile, HTTPException
 from typing import List
-import openai
+from openai import OpenAI
 import base64
 
 router = APIRouter()
 
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=os.getenv("GITHUB_TOKEN"))
+API_KEY = os.getenv("OPEN_API_KEY")
+
+client = OpenAI(
+  api_key = API_KEY
+)
 
 @router.post("/generate_tags/")
 async def generate_tags(file: UploadFile):
