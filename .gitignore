@@ -1,3 +1,5 @@
 .env
 *.tmp
-__pycache__/
+**/__pycache__/**
+
+bold-camera-454904-t7-7d950e0bb4f4.json
