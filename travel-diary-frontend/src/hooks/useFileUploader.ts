@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import {generateTagsFromImage} from '@/lib/api'
 
 export const useFileUploader = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -13,11 +13,13 @@ export const useFileUploader = () => {
       setFiles(fileArray);
 
       if (setTags && fileArray.length > 0) {
-        const formData = new FormData();
-        formData.append('file', fileArray[0]);
-
         try {
-          const response = await axios.post('http://127.0.0.1:8000/ai/generate_tags', formData);
+          const response = await generateTagsFromImage(fileArray[0]);
+          if (!response.data || !response.data.tags) {
+            console.error('タグ生成に失敗しました。');
+            return;
+          }
+          // 生成されたタグをセットする
           setTags(response.data.tags);
         } catch (error) {
           console.error('タグ生成エラー:', error);

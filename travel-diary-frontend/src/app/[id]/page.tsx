@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import axios from 'axios';
+import { getDiaryById, updateDiary} from '@/lib/api';
 import TagInputArea from '@/components/TagInputArea';
 import FilePreview from '@/components/FilePreview';
 import { useTagInput } from '@/hooks/useTagInput';
@@ -23,11 +23,16 @@ export default function DiaryDetail() {
   useEffect(() => {
     const fetchEntry = async () => {
       try {
-        const response = await axios.get(`http://127.0.0.1:8000/diary/${id}`);
-        setEntry(response.data);
-        setTitle(response.data.title);
-        setContent(response.data.content);
-        setTags(response.data.tags || []);
+        const response = await getDiaryById(id);
+        if (!response.data) {
+          console.error('データが見つかりませんでした。');
+          return;
+        }
+        const diaryData = response.data;
+        setEntry(diaryData);
+        setTitle(diaryData.title);
+        setContent(diaryData.content);
+        setTags(diaryData.tags || []);
       } catch (error) {
         console.error('データ取得失敗:', error);
       }
@@ -46,11 +51,7 @@ export default function DiaryDetail() {
     deleteFileIds.forEach((id) => formData.append('delete_files', String(id)));
 
     try {
-      await axios.put(`http://127.0.0.1:8000/diary/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await updateDiary(id, formData);
       setStatus('更新成功！');
       router.push('/'); // 更新後に一覧へ戻る
     } catch (error) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { createDiary, getAllDiaries, searchDiariesByTags} from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TagInputArea from '@/components/TagInputArea';
@@ -27,7 +27,7 @@ export default function Home() {
   // 一覧取得処理
   const fetchEntries = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/diary/');
+      const response = await getAllDiaries();
       setEntries(response.data);
     } catch (error) {
       console.error('API接続エラー:', error);
@@ -41,8 +41,8 @@ export default function Home() {
         fetchEntries(); // タグが空の場合、全件取得
         return;
       }
-      const queryString = searchTags.map(tag => `tags=${encodeURIComponent(tag)}`).join('&');
-      const response = await axios.get(`http://127.0.0.1:8000/diary/search/?${queryString}`);
+      // タグがある場合、APIを呼び出して検索
+      const response = await searchDiariesByTags(searchTags);
       setEntries(response.data);
     } catch (error) {
       console.error('検索失敗:', error);
@@ -74,11 +74,7 @@ export default function Home() {
     files.forEach((file) => formData.append('files', file));
 
     try {
-      await axios.post('http://127.0.0.1:8000/diary/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await createDiary(formData);
       setStatus('投稿成功！');
       setTitle('');
       setContent('');
