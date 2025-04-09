@@ -3,28 +3,21 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-
-interface Photo {
-  id: number;
-  file_url: string;
-}
-
-interface DiaryEntry {
-  id: number;
-  title: string;
-  content: string;
-  created_at: string;
-  photos: Photo[];
-  tags: string[];
-}
+import { useRouter } from 'next/navigation';
+import TagInputArea from '@/components/TagInputArea';
+import FilePreview from '@/components/FilePreview';
+import { useTagInput } from '@/hooks/useTagInput';
+import { useFileUploader } from '@/hooks/useFileUploader';
+import { DiaryEntry, Photo } from '@/types/diary';
 
 export default function Home() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [searchTags, setSearchTags] = useState<string[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const { tags, setTags, addTag, removeTag } = useTagInput();
+  const { files, setFiles, handleFileChange } = useFileUploader();
   const [status, setStatus] = useState('');
   
   useEffect(() => {
@@ -69,36 +62,6 @@ export default function Home() {
     setSearchTags(searchTags.filter((t) => t !== tag));
   };
 
-  // タグ追加
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value) {
-      setTags([...tags, e.currentTarget.value]);
-      e.currentTarget.value = '';
-    }
-  };
-
-  // タグ削除
-  const handleDeleteTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
-
-  // ファイル追加処理
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const file = e.target.files[0];
-      const formData = new FormData();
-      formData.append("file", file);
-      setFiles(Array.from(e.target.files)||[]);
-      try {
-        const response = await axios.post("http://127.0.0.1:8000/ai/generate_tags", formData);
-        setTags(response.data.tags);
-        console.log("タグ生成成功:", response.data.tags);
-      } catch (error) {
-        console.error("タグ生成エラー:", error);
-      }
-    }
-  };  
-
   // 投稿処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +85,7 @@ export default function Home() {
       setTags([]);
       setFiles([]);
       // 投稿成功後に一覧を再取得して更新
-      fetchEntries();
+      router.refresh();
     } catch (error) {
       console.error('APIエラー:', error);
       setStatus('投稿失敗...');
@@ -130,69 +93,47 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10">
-      {/* 投稿フォーム */}
-      <h1 className="text-3xl font-bold text-blue-500 mb-6">Travel Diary</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg mb-10"
-      >
-        <div className="mb-4 flex flex-wrap">
-          {tags.map((tag) => (
-            <span 
-              key={tag} 
-              onClick={() => handleDeleteTag(tag)}
-              className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full mr-2 cursor-pointer">
-              {tag} ❌
-            </span>
+    <div className="w-full mx-auto p-6 bg-white shadow rounded text-gray-800 flex flex-col items-center">
+      <h1 className="text-2xl font-bold mb-4 text-blue-500">Travel Diary</h1>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded-lg shadow-lg max-w-2xl">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="タイトル"
+          className="w-full border border-gray-300 rounded px-4 py-2"
+          required
+        />
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="内容"
+          className="w-full border border-gray-300 rounded px-4 py-2"
+          required
+        />
+
+        <TagInputArea tags={tags} onAdd={addTag} onRemove={removeTag} />
+
+        <div className="flex flex-wrap">
+          {files.map((file, index) => (
+            <FilePreview
+              key={index}
+              fileUrl={URL.createObjectURL(file)}
+              onDelete={() => setFiles(files.filter((_, i) => i !== index))}
+            />
           ))}
-          <input
-            placeholder="タグを追加"
-            onKeyDown={handleAddTag}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none w-24"
-          />
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2">タイトル</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2">内容</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2">写真・動画</label>
-          <input
-            type="file"
-            multiple onChange={handleFileChange} 
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
-        >
+
+        <input type="file" multiple onChange={(e) => handleFileChange(e, setTags)} className="mb-4 text-gray-300" />
+
+        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded w-full my-4">
           投稿
         </button>
-        {status && (
-          <p className="mt-4 text-center text-green-500">{status}</p>
-        )}
       </form>
 
-      <h1 className="text-2xl font-bold mb-4 text-blue-500">投稿検索</h1>
+      <h1 className="text-2xl font-bold mb-4 text-blue-500 mt-10">投稿検索</h1>
       {/* タグ検索UI */}
-      <div className="flex gap-2 mb-4 bg-white p-4 rounded-lg shadow-lg">
+      <div className="flex gap-2 mb-4 bg-white p-4 rounded-lg shadow-lg mb-10">
         {searchTags.map((tag) => (
           <span
             key={tag}
