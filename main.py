@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from routes import photos, diary
+from routes import photos, diary, ai
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -19,6 +19,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.include_router(photos.router, prefix="/uploads", tags=["uploads"])
 app.include_router(diary.router, prefix="/diary", tags=["diary"])
+app.include_router(ai.router, prefix="/ai", tags=["ai"])
 
 @app.get("/")
 def root():
