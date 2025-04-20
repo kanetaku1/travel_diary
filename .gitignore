@@ -11,3 +11,6 @@ venv/
 
 # OS
 .DS_Store
+
+# migration files
+migrations/
