@@ -1,5 +1,13 @@
+# Node.js
+node_modules/
+.next/
 .env
-*.tmp
-**/__pycache__/**
+
+# Python
+__pycache__/
+*.pyc
+env/
 venv/
-bold-camera-454904-t7-7d950e0bb4f4.json
+
+# OS
+.DS_Store
