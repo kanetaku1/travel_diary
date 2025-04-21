@@ -14,3 +14,6 @@ venv/
 
 # migration files
 migrations/
+
+# API keys
+bold-camera-454904-t7-bb944083aaaf.json

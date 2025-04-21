@@ -6,8 +6,6 @@ from routes.photos import save_file
 from typing import List
 import os
 
-UPLOAD_DIR = "uploads"
-
 router = APIRouter()
 
 def get_db():
