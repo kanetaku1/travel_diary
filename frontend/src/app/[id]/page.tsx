@@ -75,7 +75,10 @@ export default function DiaryDetail() {
 
         <div className="flex flex-wrap mb-4">
           {entry.photos.map((photo) => (
-            <FilePreview key={photo.id} fileUrl={photo.file_url} onDelete={() => setDeleteFileIds([...deleteFileIds, photo.id])} />
+            <FilePreview 
+              key={photo.id} 
+              fileUrl={photo.file_url} 
+              onDelete={() => setDeleteFileIds([...deleteFileIds, photo.id])} />
           ))}
         </div>
 
