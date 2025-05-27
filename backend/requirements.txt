@@ -40,6 +40,7 @@ typing_extensions==4.13.2
 tzdata==2025.2
 urllib3==2.4.0
 uvicorn==0.34.1
+python-dotenv
 
 # node == v22.14.0
 # npm == 10.8.3

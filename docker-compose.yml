@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Next.js フロントエンドサービス
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - ./frontend:/usr/src/app
+      # node_modules はコンテナ内のものを使用
+      - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      # バックエンドAPIのURL
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      # データベース接続URL（フロントエンドで直接使用する場合）
+      - DATABASE_URL=postgresql://travel_user:travel_password@db:5432/travel_diary
+    depends_on:
+      - db
+      - backend
+
+  # FastAPI バックエンドサービス
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - ./backend:/usr/src/app
+    environment:
+      - DATABASE_URL=postgresql://travel_user:travel_password@db:5432/travel_diary
+      - DEBUG=True
+    depends_on:
+      - db
+
+  # PostgreSQL データベースサービス
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      # データベースデータを永続化
+      - postgres_data:/var/lib/postgresql/data
+      # 初期化スクリプトがある場合
+      - ./init-db:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_USER=travel_user
+      - POSTGRES_PASSWORD=travel_password
+      - POSTGRES_DB=travel_diary
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel_user -d travel_diary"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
